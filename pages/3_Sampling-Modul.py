@@ -421,15 +421,23 @@ def doTranscription(toolName, colId, docId, modelProvMap, modelsIdMap):
 
 
 def get_documents(sid, colid):
+    # Check if a proxy is set in the Streamlit session state and if the proxy's https setting is a specific value
     if st.session_state.proxy is not None and st.session_state.proxy["https"] == 'http://:@:':
+        # If the conditions are met, make a GET request without a proxy to the Transkribus API to get documents for a specific collection
         r = requests.get("https://transkribus.eu/TrpServer/rest/collections/{}/list?JSESSIONID={}".format(colid, sid))
     else:
-        r = requests.get("https://transkribus.eu/TrpServer/rest/collections/{}/list?JSESSIONID={}".format(colid, sid), proxies = st.session_state.proxy)
+        # If the proxy is different, make the GET request with the proxy settings
+        r = requests.get("https://transkribus.eu/TrpServer/rest/collections/{}/list?JSESSIONID={}".format(colid, sid), proxies=st.session_state.proxy)
+    
+    # Check if the request was successful (status code 200)
     if r.status_code == requests.codes.ok:
+        # Return the JSON response from the API if the request was successful
         return r.json()
     else:
+        # If the request failed, print the response and display an error message in Streamlit
         print(r)
-        st.error('Fehler!','Fehler bei der Abfrage der Dokumentliste. Col-ID ' + str(colid) + ' invalid?')
+        st.error('Fehler!', 'Fehler bei der Abfrage der Dokumentliste. Col-ID ' + str(colid) + ' invalid?')
+        # Return None to indicate that the request was unsuccessful
         return None
     
 
