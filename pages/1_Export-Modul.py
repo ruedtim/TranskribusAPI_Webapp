@@ -187,12 +187,13 @@ def start_extraction(col_id, doc_id, start_page, end_page, region_name, export_l
     # Return the workbook and file names for further use.
     return workbook_name, file_name
 
-"""
-The following two functions are used to extract text and images from a document.
-They are based on the functions from the TranskribusPyClient library, but modified
-to work with Streamlit and to return the extracted data instead of writing it to a file.
-"""
+
 def extract_regions_lines_text_and_image(col_id, doc_id, start_page, end_page, tool_name, region_name):
+    """
+    The following two functions are used to extract text and images from a document.
+    They are based on the functions from the TranskribusPyClient library, but modified
+    to work with Streamlit and to return the extracted data instead of writing it to a file.
+    """
     try:
         # Extract transcription and document configuration data from Transkribus API.
         doc = uf.extract_transcription_raw(col_id, doc_id, start_page, end_page, tool_name, st)
