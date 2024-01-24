@@ -414,14 +414,14 @@ def doTranscription(toolName, colId, docId, modelProvMap, modelsIdMap):
 
     if modelProvMap[toolName] == 'PyLaia':
         if st.session_state.proxy is not None and st.session_state.proxy["https"] == 'http://:@:':
-            os.system('python ../../TranskribusAPI/lib/TranskribusPyClient/src/TranskribusCommands/do_htrRnn.py {} None {} --docid {} --pylaia'.format(modelsIdMap[toolName], colId, docId))
+            os.system('python ../lib/TranskribusPyClient/src/TranskribusCommands/do_htrRnn.py {} None {} --docid {} --pylaia'.format(modelsIdMap[toolName], colId, docId))
         else:
-            os.system('python ../../TranskribusAPI/lib/TranskribusPyClient/src/TranskribusCommands/do_htrRnn.py {} None {} --docid {} --pylaia --https_proxy={}'.format(modelsIdMap[toolName], colId, docId, st.session_state.proxy))
+            os.system('python ../lib/TranskribusPyClient/src/TranskribusCommands/do_htrRnn.py {} None {} --docid {} --pylaia --https_proxy={}'.format(modelsIdMap[toolName], colId, docId, st.session_state.proxy))
     else:
         if st.session_state.proxy is not None and st.session_state.proxy["https"] == 'http://:@:':
-            os.system('python ../../TranskribusAPI/lib/TranskribusPyClient/src/TranskribusCommands/do_htrRnn.py {} None {} --docid {}'.format(modelsIdMap[toolName], colId, docId))
+            os.system('python ../lib/TranskribusPyClient/src/TranskribusCommands/do_htrRnn.py {} None {} --docid {}'.format(modelsIdMap[toolName], colId, docId))
         else:
-            os.system('python ../../TranskribusAPI/lib/TranskribusPyClient/src/TranskribusCommands/do_htrRnn.py {} None {} --docid {} --https_proxy={}'.format(modelsIdMap[toolName], colId, docId, st.session_state.proxy))
+            os.system('python ../lib/TranskribusPyClient/src/TranskribusCommands/do_htrRnn.py {} None {} --docid {} --https_proxy={}'.format(modelsIdMap[toolName], colId, docId, st.session_state.proxy))
 
     return
 

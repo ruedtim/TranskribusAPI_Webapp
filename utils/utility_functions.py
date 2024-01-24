@@ -227,7 +227,7 @@ def save_credentials(st):
         None
     """
     # Path to the credentials.py file
-    credentials_path = '../lib/TranskribusPyClient/src/' + 'Transkribus_credential_' + st.session_state.sessionId + '.py'
+    credentials_path = '/lib/TranskribusPyClient/src/' + 'Transkribus_credential_' + st.session_state.sessionId + '.py'
 
     # If the file doesn't exist, create it
     if not Path(credentials_path).is_file():
