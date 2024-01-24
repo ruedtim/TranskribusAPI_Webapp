@@ -164,14 +164,6 @@ def set_header(header_name, st):
         page_title="StAZH Transkribus API",
     )
 
-    current_pages = get_pages("Start")
-    for key, value in current_pages.items():
-        if value['page_name'] == "Start":
-            del current_pages[key]
-            break
-        else:
-            pass
-
     hide_decoration_bar_style = '''
         <style>
             header {visibility: hidden;}
@@ -196,6 +188,7 @@ def check_session_state(st):
     """
     if st.session_state.get("sessionId") is None:
         switch_page("Start")
+        return
 
 
 def remove_file(file_path):
@@ -212,59 +205,3 @@ def remove_file(file_path):
         shutil.rmtree(file_path)
     except:
         pass
-
-
-def save_credentials(st):
-    """
-    Save the provided email and password to the credentials file.
-
-    Args:
-        email (str): The email to be saved.
-        password (str): The password to be saved.
-        credentials_path (str): The path to the credentials file.
-
-    Returns:
-        None
-    """
-    # Path to the credentials.py file
-    credentials_path = '/lib/TranskribusPyClient/src/' + 'Transkribus_credential_' + st.session_state.sessionId + '.py'
-
-    # If the file doesn't exist, create it
-    if not Path(credentials_path).is_file():
-        create_credentials_file(credentials_path)
-        return
-
-    # Read the existing content
-    with open(credentials_path, 'r') as file:
-        content = file.readlines()
-
-    # Modify the content
-    for i, line in enumerate(content):
-        if 'login' in line:
-            content[i] = f'login    = "{st.session_state.email}"\n'
-        elif 'password' in line:
-            content[i] = f'password = "{st.session_state.password}"\n'
-
-    # Write the modified content back
-    with open(credentials_path, 'w') as file:
-        file.writelines(content)
-
-    return credentials_path
-
-def create_credentials_file(file_name, login='', password=''):
-    """
-    Create a credentials file with the provided login and password.
-
-    Args:
-        file_name (str): The name of the file to create.
-        login (str, optional): The login to be included in the credentials file. Defaults to an empty string.
-        password (str, optional): The password to be included in the credentials file. Defaults to an empty string.
-    """
-
-    content = f"""# -*- coding: utf-8 -*-
-    login    = "{login}"
-    password = "{password}"
-    """
-
-    with open(file_name, 'w', encoding='utf-8') as file:
-        file.write(content)

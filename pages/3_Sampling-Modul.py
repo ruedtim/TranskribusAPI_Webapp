@@ -83,9 +83,6 @@ def evaluateSelectedModels(colId, docId, imgExport, startPage, endPage):
     - endPage (int): The ending page for evaluation.
     """
     try:
-        # Saves credentials of user into a file
-        # This is necessary for the Transkribus API
-        credential_path = uf.save_credentials(st)
         if docId == "":
             docIds = getDocIdsList(st.session_state.sessionId, colId)
             for c, docId in enumerate(docIds):
@@ -93,10 +90,7 @@ def evaluateSelectedModels(colId, docId, imgExport, startPage, endPage):
         else:
             evaluateModels(colId, docId, imgExport, startPage, endPage)
         st.success("Alle Samples evaluiert.")
-        # Removes created credentials file
-        os.remove(credential_path)
     except Exception as e:
-        os.remove(credential_path)
         st.warning('Prozess abgebrochen wegen Fehler: ' + str(e), icon="⚠️")
 
 
