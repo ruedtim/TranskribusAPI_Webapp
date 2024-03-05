@@ -23,7 +23,6 @@ def app():
     st.markdown("Bitte die Parameter für das Sampling definieren:")
 
     textentryColId = st.text_input("Collection id:")
-    textentryDocId = st.text_input("Doc id:")
 
     # Models
     st.text('Modelle:')
@@ -48,7 +47,7 @@ def app():
     if st.button('Check Collection'):
         if check_is_collection:
             with st.spinner('Collection wird geprüft...'):
-                evaluateSelectedModels(textentryColId, textentryDocId, imgExport, 0, "-")
+                evaluateSelectedModels(textentryColId, imgExport, 0, "-")
         else:
             st.write("Bitte zuerst die Checkbox 'Ist die Collection eine Sample-Collection?' aktivieren.")
 
@@ -69,7 +68,7 @@ def loadModelNames(textentryColId):
     except Exception as e:
         st.error(f'Fehler: {str(e)}')
 
-def evaluateSelectedModels(colId, docId, imgExport, startPage, endPage):
+def evaluateSelectedModels(colId, imgExport, startPage, endPage):
     """
     This function starts the evaluation process by using the selected model for transcription,
     if no transcription is available. Note: If docId is == "" then the process is applied to all
@@ -83,27 +82,25 @@ def evaluateSelectedModels(colId, docId, imgExport, startPage, endPage):
     - endPage (int): The ending page for evaluation.
     """
     try:
-        if docId == "":
-            docIds = getDocIdsList(st.session_state.sessionId, colId)
-            for c, docId in enumerate(docIds):
-                evaluateModels(colId, docId, imgExport, startPage, endPage)
-        else:
-            evaluateModels(colId, docId, imgExport, startPage, endPage)
+   
+        docIds = getDocIdsList(st.session_state.sessionId, colId)
+        for c, docId in enumerate(docIds):
+            evaluateModels(colId, docId,imgExport, startPage, endPage)
+
         st.success("Alle Samples evaluiert.")
     except Exception as e:
         st.warning('Prozess abgebrochen wegen Fehler: ' + str(e), icon="⚠️")
 
 
-def evaluateModels(textentryColId, textentryDocId, imgExport, textentryStartPage, textentryEndPage):
+def evaluateModels(textentryColId, docId,imgExport, textentryStartPage, textentryEndPage):
     """
         This function evaluates a specific model on a specified document. 
-        Defined through st.session_state['models'] resp. textentryDocId.
+        Defined through st.session_state['models']
     """
-
-    if isinstance(textentryDocId, int):
-        currentDocId = textentryDocId
+    if isinstance(docId, int):
+        currentDocId = docId
     else:
-        currentDocId = textentryDocId
+        currentDocId = docId
     if isinstance(textentryColId, int):
         currentColId = textentryColId
     else:
@@ -128,7 +125,7 @@ def evaluateModels(textentryColId, textentryDocId, imgExport, textentryStartPage
             for i in range(len(transcripts_GT)):
                 amount = (len(transcripts_GT[i]) + len(transcripts_M[i]))/2
                 charAmount_List.append(len(transcripts_GT[i]))
-        wer_list = []
+
         cer_list = []
 
         # Replace this with a functioning image processing function
@@ -142,13 +139,10 @@ def evaluateModels(textentryColId, textentryDocId, imgExport, textentryStartPage
         if not (keys == None or keys_GT == None):
             for k in range(len(keys)):
                 wer, cer = getErrorRate(keys[k], keys_GT[k])
-                wer_list.append(wer)
                 cer_list.append(cer)
             cer_list_gew = []
-            wer_list_gew = []
             for j in range(len(cer_list)):
                 cer_list_gew.append(cer_list[j]*charAmount_List[j]/np.sum(charAmount_List))
-                wer_list_gew.append(wer_list[j]*charAmount_List[j]/np.sum(charAmount_List))
             pages = uf.extract_transcription_raw(currentColId, currentDocId, textentryStartPage, textentryEndPage, st.session_state['model'], st)
         #find best and worst cer
             cer_best = [100,0]
@@ -211,13 +205,12 @@ def evaluateModels(textentryColId, textentryDocId, imgExport, textentryStartPage
                 #init the column names
                 columns = ['doc Name Sample']
                 if imgExport:
-                    columns.extend(chain(*[['CER{}'.format(i), 'WER{}'.format(i), 'Model{}'.format(i), 'Best_CER{}'.format(i), 'Best_CER_Imag{}'.format(i), 'Worst_CER{}'.format(i), 'Worst_CER_Imag{}'.format(i)] for i in range(1,10)]))
+                    columns.extend(chain(*[['CER{}'.format(i),  'Model{}'.format(i), 'Best_CER{}'.format(i), 'Best_CER_Imag{}'.format(i), 'Worst_CER{}'.format(i), 'Worst_CER_Imag{}'.format(i)] for i in range(1,10)]))
                 else:
-                    columns.extend(chain(*[['CER{}'.format(i), 'WER{}'.format(i), 'Model{}'.format(i)] for i in range(1,10)]))
+                    columns.extend(chain(*[['CER{}'.format(i), 'Model{}'.format(i)] for i in range(1,10)]))
                 sht1.range('A1').value = columns
                 sht1.range('A2').value = uf.get_doc_name_from_id(currentColId, currentDocId, st)
                 sht1.range('B2').value = np.sum(cer_list_gew)
-                sht1.range('C2').value = np.sum(wer_list_gew)
                 sht1.range('D2').value = st.session_state['model']
                 if imgExport:
                     sht1.range('E2').value = best_cer
@@ -250,7 +243,6 @@ def evaluateModels(textentryColId, textentryDocId, imgExport, textentryStartPage
                 if currentColumn < 3:
                     sht1.range('A{}'.format(currentRow)).value = uf.get_doc_name_from_id(currentColId, currentDocId, st)
                     sht1.range('B{}'.format(currentRow)).value = np.sum(cer_list_gew)
-                    sht1.range('C{}'.format(currentRow)).value = np.sum(wer_list_gew)
                     sht1.range('D{}'.format(currentRow)).value = st.session_state['model']
                     if imgExport:
                         sht1.range('E{}'.format(currentRow)).value = best_cer
@@ -260,9 +252,9 @@ def evaluateModels(textentryColId, textentryDocId, imgExport, textentryStartPage
                 else:
                     values = sht1.range('A{}'.format(currentRow), 'ZZ{}'.format(currentRow)).value
                     if imgExport:
-                        values[currentColumn:currentColumn + 6] = [np.sum(cer_list_gew), np.sum(wer_list_gew), st.session_state['model'], best_cer, '=HYPERLINK("' + best_url + '")', worst_cer, '=HYPERLINK("' + worst_url + '")']
+                        values[currentColumn:currentColumn + 6] = [np.sum(cer_list_gew), "", st.session_state['model'], best_cer, '=HYPERLINK("' + best_url + '")', worst_cer, '=HYPERLINK("' + worst_url + '")']
                     else:
-                        values[currentColumn:currentColumn + 2] = [np.sum(cer_list_gew), np.sum(wer_list_gew), st.session_state['model']]
+                        values[currentColumn:currentColumn + 2] = [np.sum(cer_list_gew), "", st.session_state['model']]
                     sht1.range('A{}'.format(currentRow), 'ZZ{}'.format(currentRow)).value = values
         else:
             st.info("!","Kein GT in Sample vorhanden! Vorgang für Modell {} und Doc {} wird abgebrochen...".format(st.session_state['models'], currentDocId))
@@ -323,11 +315,8 @@ def get_doc_transcript_keys(colId, docId, textentryStartPage, textentryEndPage, 
         return None
     else:
         #self.popupmsg("HTR müssen noch ausgeführt werden. Dies kann einige Zeit dauern...")
-        print("HTR für " + str(docId) + " gestartet.")
-        doTranscription(toolName, colId, docId, st.session_state.modelProvMap, st.session_state.modelsIdMap)
-
-        keys = get_doc_transcript_keys(colId, docId, textentryStartPage, textentryEndPage, toolName)
-        return keys
+        print("Keine Transkriptionen für ausgewähltes Modell vorhanden.")
+        return None
         
     return keys
 
@@ -399,25 +388,6 @@ def get_models_list(colId):
     modelsProviderMap = dict(zip(models, modelsProvider))
     models.sort()
     return models, modelsIdMap, modelsProviderMap
-
-def doTranscription(toolName, colId, docId, modelProvMap, modelsIdMap):
-    """
-        This function submits the job such that the model is applied to a certain document.
-        Note that a distinction has to be made between PyLaia models and other models.
-    """
-
-    if modelProvMap[toolName] == 'PyLaia':
-        if st.session_state.proxy is not None and st.session_state.proxy["https"] == 'http://:@:':
-            os.system('python ../lib/TranskribusPyClient/src/TranskribusCommands/do_htrRnn.py {} None {} --docid {} --pylaia'.format(modelsIdMap[toolName], colId, docId))
-        else:
-            os.system('python ../lib/TranskribusPyClient/src/TranskribusCommands/do_htrRnn.py {} None {} --docid {} --pylaia --https_proxy={}'.format(modelsIdMap[toolName], colId, docId, st.session_state.proxy))
-    else:
-        if st.session_state.proxy is not None and st.session_state.proxy["https"] == 'http://:@:':
-            os.system('python ../lib/TranskribusPyClient/src/TranskribusCommands/do_htrRnn.py {} None {} --docid {}'.format(modelsIdMap[toolName], colId, docId))
-        else:
-            os.system('python ../lib/TranskribusPyClient/src/TranskribusCommands/do_htrRnn.py {} None {} --docid {} --https_proxy={}'.format(modelsIdMap[toolName], colId, docId, st.session_state.proxy))
-
-    return
 
 
 def get_documents(sid, colid):
