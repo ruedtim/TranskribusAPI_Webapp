@@ -60,6 +60,7 @@ This module provides a way to evaluate a certain model on an entire Collection. 
 - Modelle:
 	- Here a model can be selected. All models available in Transkribus should be listed.
 	  Note that first one has to sync the models by clicking "Modelle abrufen".
+	- One has to confirm, that one choosed a sample collection
 
 #### Output:
 
