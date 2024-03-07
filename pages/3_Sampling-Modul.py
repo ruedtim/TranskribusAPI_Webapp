@@ -1,10 +1,14 @@
 import random
+from io import BytesIO
 import requests
+import shutil
 import streamlit as st
 import pandas as pd
 import numpy as np
+from PIL import Image
 import os
 import xlwings as xw
+import xlsxwriter
 import xml.etree.ElementTree as et
 from bs4 import BeautifulSoup
 from itertools import chain
@@ -41,16 +45,34 @@ def app():
     # Image export checkbox
     imgExport = st.checkbox("Bilder der Linien mit dem besten und schlechtesten CER-Wert exportieren", value=True)
 
-    check_is_collection = st.checkbox("Ist die Collection eine Sample-Collection?")
 
     # Submit job button
     if st.button('Check Collection'):
-        if check_is_collection:
-            with st.spinner('Collection wird geprüft...'):
-                evaluateSelectedModels(textentryColId, imgExport, 0, "-")
-        else:
-            st.write("Bitte zuerst die Checkbox 'Ist die Collection eine Sample-Collection?' aktivieren.")
-
+        with st.spinner('Collection wird geprüft...'):
+            file_download, user_file_name = evaluateSelectedModels(textentryColId, imgExport, 0, "-")
+        
+    # Attempt to provide a download button for the file, if available.
+    try:
+        with open(file_download, 'rb') as file:
+            st.download_button(
+                label='Download Export',
+                data=file,
+                file_name=user_file_name,
+                mime='application/vnd.ms-excel',
+                on_click=remove_file(file_download)
+            )
+            
+    except Exception as e:
+        # Silently pass if there is any exception (like file not found).
+        # This code causes an exception but it still works somehow. It says the used variables are not defined, but they are. May be worth looking into it at a later time
+        pass
+# Function to remove the temporary file after download.
+# Gets called as a callback when the download button is clicked.
+def remove_file(file_path):
+    def remove_action():
+        new_path = os.path.dirname(file_path)
+        shutil.rmtree(new_path)
+    return remove_action
 
 def loadModelNames(textentryColId):
     """
@@ -81,15 +103,79 @@ def evaluateSelectedModels(colId, imgExport, startPage, endPage):
     - startPage (int): The starting page for evaluation.
     - endPage (int): The ending page for evaluation.
     """
-    try:
-   
-        docIds = getDocIdsList(st.session_state.sessionId, colId)
-        for c, docId in enumerate(docIds):
-            evaluateModels(colId, docId,imgExport, startPage, endPage)
+    output_path = "data/samplings/download" + st.session_state.sessionId + '/'
+    image_folder = 'data/samplings/tempImgs/' + st.session_state.sessionId + '/'
+    
+    # Create a folder for personal excel download if it doesn't exist.
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+    # generate a random number between 1 and 1000 to avoid overwriting of files
+    random_number = str(random.randint(1, 1000))
 
-        st.success("Alle Samples evaluiert.")
-    except Exception as e:
-        st.warning('Prozess abgebrochen wegen Fehler: ' + str(e), icon="⚠️")
+    workbook_name = f"{output_path}{random_number}.xlsx"
+    file_name = f"ModelEvaluation.xlsx"
+
+    # Create and configure an Excel workbook and worksheet.
+    wb = xlsxwriter.Workbook(workbook_name)
+    sht1 = wb.add_worksheet()
+    # Initialize column names based on whether images will be exported.
+    if not imgExport:
+        columns = ['Dokument Name',  'CER','Model','Best CER','Worst CER']
+    else:
+        columns = ['Dokument Name',  'CER','Model', 'Best CER', 'Worst CER','Image best CER','Image worst CER']
+        sht1.set_default_row(40)
+        sht1.set_row(0,20)
+        
+
+
+    # Write the column headers into the Excel sheet.
+    for i, col in enumerate(columns):
+        sht1.write(0, i, col)
+
+    # Define a text wrap format for cells.
+    wrap = wb.add_format({'text_wrap': True})
+    
+    # Create a folder for temporary images if it doesn't exist.
+    if not os.path.exists(image_folder):
+        os.makedirs(image_folder)
+
+
+    docIds = getDocIdsList(st.session_state.sessionId, colId)
+    docNames = []
+    CERs = []
+    worstcers = []
+    bestcers = []
+    imgsBest = []
+    imgsWorst = []
+    for c, docId in enumerate(docIds):
+        docName, CER, bestcer,worstcer,imgBest, imgWorst,model = evaluateModels(colId, docId,imgExport, startPage, endPage)
+        docNames.append(docName)
+        CERs.append(CER)
+        bestcers.append(bestcer)
+        worstcers.append(worstcer)
+        imgsBest.append(imgBest)
+        imgsWorst.append(imgWorst)
+        
+    row = 1
+    for c in range(len(docNames)):
+        sht1.write(row, 0, str(docNames[c]))
+        sht1.write(row, 1, str(CERs[c]))
+        sht1.write(row, 2, str(model))
+        sht1.write(row, 3, str(bestcers[c]))
+        sht1.write(row, 4, str(worstcers[c]))
+        if imgExport:
+            imgsBest[c].save(image_folder + '/tempImgBest_{}.jpg'.format(c))
+            sht1.insert_image(row, 5, image_folder + '/tempImgBest_{}.jpg'.format(c),{'x_scale': 0.3, 'y_scale': 0.3})
+            imgsWorst[c].save(image_folder + '/tempImgWorst_{}.jpg'.format(c))
+            sht1.insert_image(row, 6, image_folder + '/tempImgWorst_{}.jpg'.format(c),{'x_scale': 0.3, 'y_scale': 0.3})
+        row += 1
+
+    # Close the workbook and remove the temporary image folder.
+    wb.close()
+    shutil.rmtree(image_folder)
+    st.success(f"Alle Samples evaluiert.")
+    return workbook_name, file_name
+
 
 
 def evaluateModels(textentryColId, docId,imgExport, textentryStartPage, textentryEndPage):
@@ -97,15 +183,10 @@ def evaluateModels(textentryColId, docId,imgExport, textentryStartPage, textentr
         This function evaluates a specific model on a specified document. 
         Defined through st.session_state['models']
     """
-    if isinstance(docId, int):
-        currentDocId = docId
-    else:
-        currentDocId = docId
-    if isinstance(textentryColId, int):
-        currentColId = textentryColId
-    else:
-        currentColId = textentryColId
-        
+ 
+    currentDocId = docId
+    currentColId = textentryColId
+     
     #get the keys of the transcriptions of the Ground Truth
     keys_GT = get_doc_transcript_keys(textentryColId, currentDocId, textentryStartPage, textentryEndPage, 'GT')
     #get the keys of the transcriptions of the selected model
@@ -113,155 +194,83 @@ def evaluateModels(textentryColId, docId,imgExport, textentryStartPage, textentr
     transcripts_GT = getDocTranscript(textentryColId, currentDocId, textentryStartPage, textentryEndPage, 'GT')
     transcripts_M = getDocTranscript(textentryColId, currentDocId, textentryStartPage, textentryEndPage, st.session_state['model'])
     charAmount_List = []
-    target_dir = "data/samplings/" + st.session_state.sessionId
 
-    # generate a random number between 1 and 1000 to avoid overwriting of files
-    random_number = str(random.randint(1, 1000))
-    
-    target_file = f"/ModelEvaluation_{random_number}.xlsx"
+    if len(transcripts_GT) == len(transcripts_M):
+        for i in range(len(transcripts_GT)):
+            amount = (len(transcripts_GT[i]) + len(transcripts_M[i]))/2
+            charAmount_List.append(len(transcripts_GT[i]))
 
-    try:
-        if len(transcripts_GT) == len(transcripts_M):
-            for i in range(len(transcripts_GT)):
-                amount = (len(transcripts_GT[i]) + len(transcripts_M[i]))/2
-                charAmount_List.append(len(transcripts_GT[i]))
-
-        cer_list = []
-
-        # Replace this with a functioning image processing function
-        if imgExport and not os.path.exists(target_dir + '/Images_best_cer_' + str(st.session_state['model']) + '/'):
-            os.makedirs(target_dir + '/Images_best_cer_' + str(st.session_state['model']) + '/')
-
-        if imgExport and not os.path.exists(target_dir + '/Images_worst_cer_' + str(st.session_state['model']) + '/'):
-            os.makedirs(target_dir + '/Images_worst_cer_' + str(st.session_state['model']) + '/')
-
-        #calculate wer and cer for every transcription a model produced
-        if not (keys == None or keys_GT == None):
-            for k in range(len(keys)):
-                wer, cer = getErrorRate(keys[k], keys_GT[k])
-                cer_list.append(cer)
-            cer_list_gew = []
-            for j in range(len(cer_list)):
-                cer_list_gew.append(cer_list[j]*charAmount_List[j]/np.sum(charAmount_List))
-            pages = uf.extract_transcription_raw(currentColId, currentDocId, textentryStartPage, textentryEndPage, st.session_state['model'], st)
+    cer_list = []
+    cer_list_gew = []
+    worst_cer = 0.0
+    best_cer = 0.0
+    image_worst = ""
+    image_best = ""
+    #calculate cer for every transcription a model produced
+    if not (keys == None or keys_GT == None):
+        for k in range(len(keys)):
+            wer, cer = getErrorRate(keys[k], keys_GT[k])
+            cer_list.append(cer)
+        for j in range(len(cer_list)):
+            cer_list_gew.append(cer_list[j]*charAmount_List[j]/np.sum(charAmount_List))
+        pages = uf.extract_transcription_raw(currentColId, currentDocId, textentryStartPage, textentryEndPage, st.session_state['model'], st)
         #find best and worst cer
-            cer_best = [100,0]
-            cer_worst = [0,0]
-            for h in range(len(cer_list)):
-                if cer_list[h] < cer_best[0]:
-                    cer_best[0] = cer_list[h]
-                    cer_best[1] = h
-                if cer_list[h] > cer_worst[0]:
-                    cer_worst[0] = cer_list[h]
-                    cer_worst[1] = h
-            #save best and worst cer as image and variable if checkbox selected ---------
-            if imgExport:
-                image_worst_temp = uf.get_image_from_url(uf.get_document_r(currentColId, currentDocId, st)['pageList']['pages'][cer_worst[1]]['url'], st)
-                image_best_temp = uf.get_image_from_url(uf.get_document_r(currentColId, currentDocId, st)['pageList']['pages'][cer_best[1]]['url'], st)
-                soup_best = BeautifulSoup(pages[cer_best[1]], "xml")
-                soup_worst = BeautifulSoup(pages[cer_worst[1]], "xml")
-                for region in soup_best.findAll("TextLine"):
-                #crop out the image
-                    cords = region.find('Coords')['points']
-                    points = [c.split(",") for c in cords.split(" ")]
-                    maxX = -1000
-                    minX = 100000
-                    maxY = -1000
-                    minY = 100000
-                    for p in points:
-                        maxX = max(int(p[0]), maxX)
-                        minX = min(int(p[0]), minX)
-                        maxY = max(int(p[1]), maxY)
-                        minY = min(int(p[1]), minY)
-                    image_best = image_best_temp.crop((minX, minY, maxX,maxY))
-                for region in soup_worst.findAll("TextLine"):
-                #crop out the image
-                    cords = region.find('Coords')['points']
-                    points = [c.split(",") for c in cords.split(" ")]
-                    maxX = -1000
-                    minX = 100000
-                    maxY = -1000
-                    minY = 100000
-                    for p in points:
-                        maxX = max(int(p[0]), maxX)
-                        minX = min(int(p[0]), minX)
-                        maxY = max(int(p[1]), maxY)
-                        minY = min(int(p[1]), minY)
-                    image_worst = image_worst_temp.crop((minX, minY, maxX,maxY))
-                worst_cer = cer_worst[0]
-                best_cer = cer_best[0]
-                best_url = target_dir + '/Images_best_cer_' + str(st.session_state['model']) + '/'+ uf.get_doc_name_from_id(currentColId, currentDocId, st) +'_CER_' + str(best_cer) + '_Page_'+str(cer_best[1]+1) +'.jpg'
-                worst_url = target_dir + '/Images_worst_cer_' + str(st.session_state['model']) + '/'+ uf.get_doc_name_from_id(currentColId, currentDocId, st) +'_CER_' + str(worst_cer) + '_Page_'+str(cer_worst[1]+1) +'.jpg'
-                image_best.save(best_url)
-                image_worst.save(worst_url)
-            #---------------------------------------------------------------------------------------
-            #check if excel file already exists
-            if not os.path.exists(target_dir + target_file):
-                #create the excel file
-                pd.DataFrame().to_excel(target_dir + target_file)
-                wb = xw.Book(target_dir + target_file)
-                sht1 = wb.sheets['Sheet1'] 
-
-                #init the column names
-                columns = ['doc Name Sample']
-                if imgExport:
-                    columns.extend(chain(*[['CER{}'.format(i),  'Model{}'.format(i), 'Best_CER{}'.format(i), 'Best_CER_Imag{}'.format(i), 'Worst_CER{}'.format(i), 'Worst_CER_Imag{}'.format(i)] for i in range(1,10)]))
-                else:
-                    columns.extend(chain(*[['CER{}'.format(i), 'Model{}'.format(i)] for i in range(1,10)]))
-                sht1.range('A1').value = columns
-                sht1.range('A2').value = uf.get_doc_name_from_id(currentColId, currentDocId, st)
-                sht1.range('B2').value = np.sum(cer_list_gew)
-                sht1.range('D2').value = st.session_state['model']
-                if imgExport:
-                    sht1.range('E2').value = best_cer
-                    sht1.range('G2').value = worst_cer
-                    sht1.range('F2').value = '=HYPERLINK("' + best_url + '")'
-                    sht1.range('H2').value = '=HYPERLINK("' + worst_url + '")'
-
-            else:
-                #open the excel sheet if the file already exists
-                print("Add to existing excel file")
-                wb = xw.Book(target_dir + target_file)
-                sht1 = wb.sheets['Sheet1']
-            #set the current row to two in order to not overwrite the column names
-                currentRow = 2
-                for c, docId in enumerate(sht1.range('A1','A10000').value):
-                    if docId == None:
-                        currentRow = c + 1
-                        break
-                    try:
-                        if int(docId) == int(currentDocId):
-                            currentRow = c + 1
-                            break
-                    except:
-                        pass
+        cer_best = [100,0]
+        cer_worst = [0,0]
+        for h in range(len(cer_list)):
+            if cer_list[h] < cer_best[0]:
+                cer_best[0] = cer_list[h]
+                cer_best[1] = h
+            if cer_list[h] > cer_worst[0]:
+                cer_worst[0] = cer_list[h]
+                cer_worst[1] = h
             
-            #find the column where one should write to (in case there is an already evaluated model on this document)
-                currentColumn = sum(x is not None for x in sht1.range('A{}'.format(currentRow), 'ZZ{}'.format(currentRow)).value)
-            
-            #write the evaluation to the excel file
-                if currentColumn < 3:
-                    sht1.range('A{}'.format(currentRow)).value = uf.get_doc_name_from_id(currentColId, currentDocId, st)
-                    sht1.range('B{}'.format(currentRow)).value = np.sum(cer_list_gew)
-                    sht1.range('D{}'.format(currentRow)).value = st.session_state['model']
-                    if imgExport:
-                        sht1.range('E{}'.format(currentRow)).value = best_cer
-                        sht1.range('F{}'.format(currentRow)).value = '=HYPERLINK("' + best_url + '")'
-                        sht1.range('G{}'.format(currentRow)).value = worst_cer
-                        sht1.range('H{}'.format(currentRow)).value = '=HYPERLINK("' + worst_url + '")'
-                else:
-                    values = sht1.range('A{}'.format(currentRow), 'ZZ{}'.format(currentRow)).value
-                    if imgExport:
-                        values[currentColumn:currentColumn + 6] = [np.sum(cer_list_gew), "", st.session_state['model'], best_cer, '=HYPERLINK("' + best_url + '")', worst_cer, '=HYPERLINK("' + worst_url + '")']
-                    else:
-                        values[currentColumn:currentColumn + 2] = [np.sum(cer_list_gew), "", st.session_state['model']]
-                    sht1.range('A{}'.format(currentRow), 'ZZ{}'.format(currentRow)).value = values
+        worst_cer = cer_worst[0]
+        best_cer = cer_best[0]
+
+        #save best and worst cer as image and variable if checkbox selected ---------
+        if imgExport:
+            image_worst_temp = uf.get_image_from_url(uf.get_document_r(currentColId, currentDocId, st)['pageList']['pages'][cer_worst[1]]['url'], st)
+            image_best_temp = uf.get_image_from_url(uf.get_document_r(currentColId, currentDocId, st)['pageList']['pages'][cer_best[1]]['url'], st)
+            soup_best = BeautifulSoup(pages[cer_best[1]], "xml")
+            soup_worst = BeautifulSoup(pages[cer_worst[1]], "xml")
+            for region in soup_best.findAll("TextLine"):
+            #crop out the image
+                cords = region.find('Coords')['points']
+                points = [c.split(",") for c in cords.split(" ")]
+                maxX = -1000
+                minX = 100000
+                maxY = -1000
+                minY = 100000
+                for p in points:
+                    maxX = max(int(p[0]), maxX)
+                    minX = min(int(p[0]), minX)
+                    maxY = max(int(p[1]), maxY)
+                    minY = min(int(p[1]), minY)
+                image_best = image_best_temp.crop((minX, minY, maxX,maxY))
+            for region in soup_worst.findAll("TextLine"):
+            #crop out the image
+                cords = region.find('Coords')['points']
+                points = [c.split(",") for c in cords.split(" ")]
+                maxX = -1000
+                minX = 100000
+                maxY = -1000
+                minY = 100000
+                for p in points:
+                    maxX = max(int(p[0]), maxX)
+                    minX = min(int(p[0]), minX)
+                    maxY = max(int(p[1]), maxY)
+                    minY = min(int(p[1]), minY)
+                image_worst = image_worst_temp.crop((minX, minY, maxX,maxY))
         else:
-            st.info("!","Kein GT in Sample vorhanden! Vorgang für Modell {} und Doc {} wird abgebrochen...".format(st.session_state['models'], currentDocId))
-        wb.save(target_dir + target_file)
-    except Exception as e:
-        print(e)
-    return
+            image_worst = ""
+            image_best = ""
+            
+    docName = uf.get_doc_name_from_id(currentColId, currentDocId, st)
+    CER = np.sum(cer_list_gew)
+    model = st.session_state['model']
+
+    return docName, CER, best_cer, worst_cer, image_best, image_worst, model
 
 
 def get_doc_transcript_keys(colId, docId, textentryStartPage, textentryEndPage, toolName):
@@ -311,7 +320,7 @@ def get_doc_transcript_keys(colId, docId, textentryStartPage, textentryEndPage, 
     if len(keys) == len(pages):
         return keys
     elif toolName == "GT":
-        st.error("Fehler!", "Nicht für alle Pages in Sample mit Docid " + str(docId) + " GT vorhanden.")
+        st.error("Fehler! Nicht für alle Pages in Sample mit Docid " + str(docId) + " GT vorhanden.")
         return None
     else:
         #self.popupmsg("HTR müssen noch ausgeführt werden. Dies kann einige Zeit dauern...")
@@ -406,7 +415,7 @@ def get_documents(sid, colid):
     else:
         # If the request failed, print the response and display an error message in Streamlit
         print(r)
-        st.error('Fehler!', 'Fehler bei der Abfrage der Dokumentliste. Col-ID ' + str(colid) + ' invalid?')
+        st.error('Fehler! Fehler bei der Abfrage der Dokumentliste. Col-ID ' + str(colid) + ' invalid?')
         # Return None to indicate that the request was unsuccessful
         return None
     
