@@ -125,7 +125,8 @@ def evaluateSelectedModels(colId, imgExport, startPage, endPage):
         columns = ['Dokument Name',  'CER','Model', 'Best CER', 'Worst CER','Image best CER','Image worst CER']
         sht1.set_default_row(40)
         sht1.set_row(0,20)
-        
+        sht1.set_column(2,2,30)
+        sht1.set_column(5,6,50)
 
 
     # Write the column headers into the Excel sheet.
@@ -148,7 +149,7 @@ def evaluateSelectedModels(colId, imgExport, startPage, endPage):
     imgsBest = []
     imgsWorst = []
     for c, docId in enumerate(docIds):
-        docName, CER, bestcer,worstcer,imgBest, imgWorst,model = evaluateModels(colId, docId,imgExport, startPage, endPage)
+        docName, CER, bestcer,worstcer,imgBest, imgWorst,model = evaluateModels(c,len(docIds),colId, docId,imgExport, startPage, endPage)
         docNames.append(docName)
         CERs.append(CER)
         bestcers.append(bestcer)
@@ -178,7 +179,7 @@ def evaluateSelectedModels(colId, imgExport, startPage, endPage):
 
 
 
-def evaluateModels(textentryColId, docId,imgExport, textentryStartPage, textentryEndPage):
+def evaluateModels(nr,total,textentryColId, docId,imgExport, textentryStartPage, textentryEndPage):
     """
         This function evaluates a specific model on a specified document. 
         Defined through st.session_state['models']
@@ -186,7 +187,9 @@ def evaluateModels(textentryColId, docId,imgExport, textentryStartPage, textentr
  
     currentDocId = docId
     currentColId = textentryColId
-     
+    docName = uf.get_doc_name_from_id(currentColId, currentDocId, st)
+    
+    success = st.success(str(nr) + ' von ' + str(total) + ' Samples ausgewertet. ' + docName + ' gestartet.')
     #get the keys of the transcriptions of the Ground Truth
     keys_GT = get_doc_transcript_keys(textentryColId, currentDocId, textentryStartPage, textentryEndPage, 'GT')
     #get the keys of the transcriptions of the selected model
@@ -266,7 +269,7 @@ def evaluateModels(textentryColId, docId,imgExport, textentryStartPage, textentr
             image_worst = ""
             image_best = ""
             
-    docName = uf.get_doc_name_from_id(currentColId, currentDocId, st)
+    success.empty()
     CER = np.sum(cer_list_gew)
     model = st.session_state['model']
 
