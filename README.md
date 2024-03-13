@@ -4,16 +4,30 @@ The State Archives of the Canton of Zurich uses Transkribus to edit various coll
 **Note:** The program is still in progress.
 
 ## Table of content:
-- [Usage](#usage)
+- [Usage with docker](#usage-with-docker)
+- [Usage with python](#usage-with-python)
 - [Requirements](#requirements)
 - [Login](#login)
 - [Module Sampling](#module-sampling)
 - [Module Export](#module-export)
 - [Module Import](#module-import)
 
-## Usage:
+## Usage with docker:
 
-In order to run the program open the command prompt, navigate to the base folder and run the following command:
+There is a Dockerfile provided in the Repository. In order to run the WebAPI with docker just navigate to the base folder and generate a docker image with the following command:
+
+```
+docker build -t transkribus_api .
+```
+Then you can run the container on the streamlit port 8501 by executing:
+```
+docker run -p 8501:8501 transkribus_api
+```
+To view your app, you can browse to [http://0.0.0.0:8501](http://0.0.0.0:8501]) or [http://localhost:8501](http://localhost:8501)
+
+
+## Usage with python:
+In order to run the program with python, navigate to the base folder and run the following command:
 
 ```
 	streamlit run Logout.py
@@ -21,7 +35,7 @@ In order to run the program open the command prompt, navigate to the base folder
 
 ## Requirements:
 
-The following libraries need to be installed in order for the program to run:
+The following libraries need to be installed in order to run the Webapp with python:
 
 ```
 	streamlit
@@ -38,6 +52,8 @@ You can install them by running the following command in the command line after 
 ```
 	pip install -q -r requirements.txt
 ```
+
+
 ## Login:
 
 Fill in your Transkribus user credentials. 
