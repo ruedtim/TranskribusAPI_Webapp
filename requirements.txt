@@ -3,4 +3,6 @@ streamlit-option-menu
 pandas
 pillow
 streamlit-extras
+xlsxwriter
+xlwings
 validators
