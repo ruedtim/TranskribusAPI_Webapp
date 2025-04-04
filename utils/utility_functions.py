@@ -5,7 +5,7 @@ from streamlit_extras.app_logo import add_logo
 from streamlit_extras.switch_page_button import switch_page
 from streamlit.source_util import page_icon_and_name
 from streamlit.util import calc_md5
-from streamlit.runtime.pages_manager import get_pages
+from streamlit.runtime.pages_manager import PagesManager
 
 from pathlib import Path
 
