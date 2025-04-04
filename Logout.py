@@ -6,12 +6,12 @@ from streamlit_extras.switch_page_button import switch_page
 from pathlib import Path
 import requests
 import xml.etree.ElementTree as et
-from streamlit.source_util import (
-    page_icon_and_name, 
-    calc_md5, 
-    get_pages,
-    _on_pages_changed
-)
+from streamlit.source_util import page_icon_and_name
+
+from streamlit.util import calc_md5
+from streamlit.runtime.pages_manager import get_pages
+
+
 
 def app():
     """
