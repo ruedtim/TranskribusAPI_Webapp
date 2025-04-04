@@ -1,4 +1,4 @@
-Streamlit==1.25.0
+Streamlit
 streamlit-option-menu
 pandas
 pillow
