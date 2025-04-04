@@ -58,7 +58,7 @@ def app():
                     st.warning("Fehler! Login war nicht erfolgreich! \n Bitte erneut versuchen.", icon="⚠️")
                 else:
                     st.warning("Login erfolgreich...", icon="✅")
-                    st.switch_page("About")
+                    st.switch_page("pages/0_About.py")
             else:
                 st.warning('Login war nicht erfolgreich', icon="⚠️")
 
