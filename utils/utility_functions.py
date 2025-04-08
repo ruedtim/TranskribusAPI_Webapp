@@ -169,10 +169,13 @@ def set_header(header_name, st):
     '''
     st.markdown(hide_decoration_bar_style, unsafe_allow_html=True)
 
-    add_logo("data/loewe.png", height=150)
+    #add_logo("data/loewe.png", height=150)
 
     st.header(header_name)
     st.markdown("---")
+
+    st.sidebar.image("res/hoend.png", width=100)
+
 
 def check_session_state(st):
     """
