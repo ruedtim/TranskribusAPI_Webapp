@@ -18,14 +18,24 @@ def app():
         initial_sidebar_state="collapsed",
     )
 
-    hide_decoration_bar_style = '''
-        <style>
-            header {visibility: hidden;}
-            [data-testid="collapsedControl"] {
-                display: none;
-            }
-        </style>
-    '''
+    is_authenticated = st.session_state.get("authenticated", False)
+
+    if not is_authenticated:
+        hide_decoration_bar_style = '''
+            <style>
+                header {visibility: hidden;}
+                [data-testid="collapsedControl"] {
+                    display: none;
+                }
+            </style>
+        '''
+    else:
+        hide_decoration_bar_style = '''
+            <style>
+                header {visibility: hidden;}
+            </style>
+        '''
+
     st.markdown(hide_decoration_bar_style, unsafe_allow_html=True)
 
     #add_logo("data/loewe.png", height=150)
