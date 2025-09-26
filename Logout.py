@@ -20,11 +20,21 @@ def app():
 
     is_authenticated = st.session_state.get("authenticated", False)
 
-    hide_decoration_bar_style = '''
-        <style>
-            header {visibility: hidden;}
-        </style>
-    '''
+    if not is_authenticated:
+        hide_decoration_bar_style = '''
+            <style>
+                header {visibility: hidden;}
+                [data-testid="collapsedControl"] {
+                    display: none;
+                }
+            </style>
+        '''
+    else:
+        hide_decoration_bar_style = '''
+            <style>
+                header {visibility: hidden;}
+            </style>
+        '''
 
     st.markdown(hide_decoration_bar_style, unsafe_allow_html=True)
 
