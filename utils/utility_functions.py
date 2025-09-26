@@ -2,10 +2,6 @@ import shutil
 import requests
 from PIL import Image
 from streamlit_extras.app_logo import add_logo
-from streamlit_extras.switch_page_button import switch_page
-from streamlit.source_util import page_icon_and_name
-from streamlit.util import calc_md5
-from streamlit.runtime.pages_manager import PagesManager
 
 from pathlib import Path
 
@@ -189,8 +185,15 @@ def check_session_state(st):
         None
     """
     if st.session_state.get("sessionId") is None:
-        switch_page("Start")
-        return
+        # Try to redirect users back to the login page when no session exists.
+        for target in ("Logout.py", "Logout", "Start.py", "Start", "pages/Start.py"):
+            try:
+                st.switch_page(target)
+                return
+            except Exception:
+                continue
+        st.error("Keine gültige Sitzung gefunden. Bitte erneut anmelden.")
+        st.stop()
 
 
 def remove_file(file_path):
