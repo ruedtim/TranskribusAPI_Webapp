@@ -15,7 +15,7 @@ def app():
     """
     st.set_page_config(
         page_title="StAZH Transkribus API",
-        initial_sidebar_state="collapsed",
+        initial_sidebar_state="expanded",
     )
 
     is_authenticated = st.session_state.get("authenticated", False)
