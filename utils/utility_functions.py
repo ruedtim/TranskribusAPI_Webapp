@@ -161,6 +161,12 @@ def set_header(header_name, st):
     hide_decoration_bar_style = '''
         <style>
             header {visibility: hidden;}
+            [data-testid="collapsedControl"],
+            [data-testid="stSidebarCollapseButton"],
+            [data-testid="baseButton-toggle"],
+            [data-testid="stBaseButton-headerNoPadding"] {
+                display: none;
+            }
         </style>
     '''
     st.markdown(hide_decoration_bar_style, unsafe_allow_html=True)
