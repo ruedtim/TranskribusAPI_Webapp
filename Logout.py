@@ -21,22 +21,14 @@ def app():
     is_authenticated = st.session_state.get("authenticated", False)
 
     if not is_authenticated:
-        hide_decoration_bar_style = '''
+        sidebar_visibility_style = """
             <style>
-                header {visibility: hidden;}
                 [data-testid="collapsedControl"] {
-                    display: none;
+                    display: block !important;
                 }
             </style>
-        '''
-    else:
-        hide_decoration_bar_style = '''
-            <style>
-                header {visibility: hidden;}
-            </style>
-        '''
-
-    st.markdown(hide_decoration_bar_style, unsafe_allow_html=True)
+        """
+        st.markdown(sidebar_visibility_style, unsafe_allow_html=True)
 
     #add_logo("data/loewe.png", height=150)
 

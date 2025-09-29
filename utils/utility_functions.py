@@ -158,13 +158,6 @@ def set_header(header_name, st):
         page_title="StAZH Transkribus API",
     )
 
-    hide_decoration_bar_style = '''
-        <style>
-            header {visibility: hidden;}
-        </style>
-    '''
-    st.markdown(hide_decoration_bar_style, unsafe_allow_html=True)
-
     #add_logo("data/loewe.png", height=150)
     st.sidebar.image("res/hoend.png", width=200)
 
